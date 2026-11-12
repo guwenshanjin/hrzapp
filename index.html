@@ -1241,5 +1241,166 @@ app.wbDebug=function(){
 };
 })();
 </script>
+<script>
+(function(){
+if(window.__hrzV3)return; window.__hrzV3=1;
+var NL=String.fromCharCode(10);
+if(S.beauty===undefined)S.beauty=false;
+if(S.ps){ if(S.ps.limit===undefined)S.ps.limit=0; if(S.ps.saveflow===undefined)S.ps.saveflow=false; }
+function nWB(it){
+ it=it||{};
+ it.keys=it.keys||[]; it.keys2=it.keys2||[];
+ if(it.name===undefined)it.name="条目";
+ if(it.content===undefined)it.content="";
+ if(it.on===undefined)it.on=true;
+ if(it.order===undefined)it.order=100;
+ if(it.pos===undefined)it.pos="before";
+ if(it.depth===undefined)it.depth=4;
+ if(it.role===undefined)it.role="system";
+ if(it.prob===undefined)it.prob=100;
+ if(it.const===undefined)it.const=!it.keys.length;
+ if(it.case===undefined)it.case=false;
+ if(it.regex===undefined)it.regex=false;
+ if(it.and===undefined)it.and=false;
+ return it;
+}
+function nPS(it){
+ it=it||{};
+ if(it.name===undefined)it.name="指令";
+ if(it.content===undefined)it.content="";
+ if(it.on===undefined)it.on=true;
+ if(it.order===undefined)it.order=100;
+ if(!it.role)it.role="system";
+ return it;
+}
+function mergeWB(g){
+ (g.items||[]).forEach(function(x){S.wb.items.push(nWB(x))});
+ if(g.on!==undefined)S.wb.on=g.on;
+ if(g.scan!==undefined)S.wb.scan=g.scan;
+ if(g.budget!==undefined)S.wb.budget=g.budget;
+}
+function mergePS(g){
+ (g.items||[]).forEach(function(x){S.ps.items.push(nPS(x))});
+ if(g.on!==undefined)S.ps.on=g.on;
+ if(g.limit!==undefined)S.ps.limit=g.limit;
+ if(g.saveflow!==undefined)S.ps.saveflow=g.saveflow;
+}
+function stEntry(e,k){
+ return nWB({name:e.comment||((e.key&&e.key[0])||("条目"+k)),keys:e.key||[],keys2:e.keysecondary||[],and:!!e.selective,content:e.content||"",on:!e.disable,const:!!e.constant,order:(typeof e.order==="number"?e.order:100),pos:(e.position===1?"after":(e.position===4?"depth":"before")),depth:e.depth||4,role:(["system","user","assistant"][e.role||0])||"system",prob:(typeof e.probability==="number"?e.probability:100),case:!!e.caseSensitive,regex:!!e.useRegex});
+}
+function stPrompt(pp,i){
+ return nPS({name:pp.name||pp.identifier||("段"+(i+1)),role:(typeof pp.role==="string"?pp.role:(["system","user","assistant"][pp.role||0]||"system")),on:pp.enabled!==false,order:i*10,content:pp.content||""});
+}
+app.wbImp=function(){
+ var inp=document.createElement("input");inp.type="file";inp.accept=".json";inp.multiple=true;
+ inp.onchange=function(){
+  var kinds=[];
+  Array.prototype.forEach.call(inp.files,function(f){
+   var r=new FileReader();
+   r.onload=function(){
+    try{
+     var j=JSON.parse(r.result);
+     if(j.wb||j.ps){
+      if(j.wb){mergeWB(j.wb);kinds.push("wb")}
+      if(j.ps){mergePS(j.ps);kinds.push("ps")}
+     }else if(j.entries){
+      Object.keys(j.entries).forEach(function(k){S.wb.items.push(stEntry(j.entries[k],k))});
+      if(j.name&&!S.wb.on)S.wb.on=true;
+      kinds.push("wb");
+     }else if(j.prompts){
+      j.prompts.forEach(function(pp,i){S.ps.items.push(stPrompt(pp,i))});
+      kinds.push("ps");
+     }else if(j.items){
+      if(j.items.length&&j.items[0]&&j.items[0].pos!==undefined){mergeWB(j);kinds.push("wb")}
+      else{mergePS(j);kinds.push("ps")}
+     }else{toast("认不出的格式")}
+     save();
+     if(kinds.length){toast("已导入："+kinds.join(" + "));if(app.wbT)app.wbT(kinds[0])}
+    }catch(err){toast("解析失败："+err.message)}
+   };
+   r.readAsText(f);
+  });
+ };
+ inp.click();
+};
+app.wbExpAll=function(){
+ var o={wb:S.wb,ps:S.ps};
+ var b=new Blob([JSON.stringify(o,null,2)],{type:"application/json"});
+ var a=document.createElement("a");a.href=URL.createObjectURL(b);
+ a.download="hrz_pack_"+Date.now()+".json";a.click();
+};
+if(window.buildMsgs&&!window.__hrzBM2){
+ window.__hrzBM2=1;
+ var _bm=window.buildMsgs;
+ window.buildMsgs=function(){
+  var m=_bm.apply(null,arguments);
+  if(m[0]&&m[0].role==="system"){
+   if(S.beauty)m[0].content=m[0].content+NL+NL+"【排版】对白单独成段，动作与环境另起一段，段与段之间空一行。";
+   if(S.ps&&S.ps.saveflow&&Number(S.ps.limit)>0&&m[0].content.length>S.ps.limit){
+    m[0].content=m[0].content.slice(0,S.ps.limit)+NL+"（已按省流截断）";
+   }
+  }
+  return m;
+ };
+}
+function beauty(t){
+ var lines=t.split(NL),out=[];
+ for(var i=0;i<lines.length;i++){
+  var l=lines[i].trim();
+  if(!l)continue;
+  if(out.length){
+   var prev=out[out.length-1];
+   if(prev&&(l.charAt(0)==="「"||prev.charAt(0)==="「")&&prev!=="")out.push("");
+  }
+  out.push(l);
+ }
+ return out.join(NL);
+}
+var _send=app.send;
+app.send=async function(){
+ var r=await _send.apply(app,arguments);
+ if(!S.beauty)return r;
+ var last=S.chat[S.chat.length-1];
+ if(!last||last.role!=="assistant"||!last.text)return r;
+ var t=last.text;
+ if(t.indexOf("```")>=0||t.trim().charAt(0)==="{")return r;
+ var b=beauty(t);
+ if(b!==t){last.text=b;save();render()}
+ return r;
+};
+app.aiItem=async function(){
+ var kw=prompt("输入关键词（例：黑色丝绒长裙 / 黑玛瑙袖扣 / 南丫岛庄园）");
+ if(!kw)return;
+ try{
+  var out="";
+  await callAI([{role:"system",content:"你只输出 JSON，不要解释，不要 markdown。"},{role:"user",content:"按关键词写一件奢侈品店商品，输出 JSON 对象：{\"n\":\"名称\",\"p\":价格整数港币,\"c\":\"衣饰|首饰|车|玩物|宅邸|礼物\",\"req\":0到80的整数,\"d\":\"一句话描述，冷淡具体不煽情\"}。关键词："+kw}],function(d){out+=d});
+  var j=JSON.parse(out.replace(/```json/g,"").replace(/```/g,"").trim());
+  S.shopCustom.push({n:j.n||kw,p:Number(j.p)||100000,c:j.c||"礼物",req:Number(j.req)||10,d:j.d||""});
+  save();op.shop();toast("已加入："+(j.n||kw));
+ }catch(e){toast("生成失败："+e.message)}
+};
+app.psSf=function(v){S.ps.saveflow=v;save();op.wb()};
+app.psLim=function(v){S.ps.limit=Number(v)||0;save();op.wb()};
+app.beautyT=function(v){S.beauty=v;save();toast(v?"美化：开":"美化：关")};
+var _o=app.open;
+app.open=function(t,h){
+ _o(t,h);
+ var m=document.getElementById("modal"); if(!m)return;
+ var box=document.createElement("div");
+ if(t==="指令预设"){
+  var ch=0;
+  S.ps.items.forEach(function(it){if(it.on)ch+=(it.content||"").length});
+  box.innerHTML=`<div class="rowf"><div><label class="f">省流模式</label><select onchange="app.psSf(this.value==='1')"><option value="0" ${S.ps.saveflow?"":"selected"}>关</option><option value="1" ${S.ps.saveflow?"selected":""}>开</option></select></div><div><label class="f">总字数上限（0=不限）</label><input type="number" value="${S.ps.limit||0}" onchange="app.psLim(this.value)"></div></div><div class="dim tiny">当前注入约 ${ch} 字 ≈ ${Math.ceil(ch*0.7)} tokens</div><button style="width:100%;padding:11px;margin-top:8px" onclick="app.wbExpAll()">导出世界书+指令（一个 json）</button>`;
+ }else if(t==="世界书"){
+  box.innerHTML=`<button style="width:100%;padding:11px;margin-top:8px" onclick="app.wbExpAll()">导出世界书+指令（一个 json）</button>`;
+ }else if(t.indexOf("设定 · ")===0){
+  box.innerHTML=`<label class="f">对话美化（对白与动作自动分段）</label><select onchange="app.beautyT(this.value==='1')"><option value="0" ${S.beauty?"":"selected"}>关</option><option value="1" ${S.beauty?"selected":""}>开</option></select><div class="dim tiny" style="margin-top:6px">含代码块或 JSON 的回复会自动跳过美化。</div>`;
+ }else if(t.indexOf("AURUM")===0){
+  box.innerHTML=`<button style="width:100%;padding:12px;margin-top:10px" onclick="app.aiItem()">✨ 输入关键词，让 AI 写一件商品</button>`;
+ }else{return}
+ m.insertBefore(box,m.lastElementChild);
+};
+})();
+</script>
 </body>
 </html>
