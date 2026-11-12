@@ -154,20 +154,6 @@ jobs:
                   });
               }
 
-              private static String q(String s) {
-                  if (s == null) return "\"\"";
-                  StringBuilder sb = new StringBuilder("\"");
-                  for (int i = 0; i < s.length(); i++) {
-                      char c = s.charAt(i);
-                      if (c == '"' || c == '\\') sb.append('\\').append(c);
-                      else if (c == '\n') sb.append("\\n");
-                      else if (c == '\r') sb.append("\\r");
-                      else if (c < 0x20) sb.append(' ');
-                      else sb.append(c);
-                  }
-                  return sb.append('"').toString();
-              }
-
               class Bridge {
                   @JavascriptInterface
                   public void post(final String id, final String url, final String headersJson, final String body) {
@@ -193,7 +179,7 @@ jobs:
                                   os.close();
                                   int code = c.getResponseCode();
                                   String ct = c.getContentType();
-                                  emit("window.__nativeStart(" + q(id) + "," + code + "," + q(ct == null ? "" : ct) + ")");
+                                  emit("window.__nativeStart(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(ct == null ? "" : ct) + ")");
                                   InputStream in = (code >= 400) ? c.getErrorStream() : c.getInputStream();
                                   if (in == null) in = c.getErrorStream();
                                   if (in != null) {
@@ -202,13 +188,13 @@ jobs:
                                       while ((n = in.read(buf)) > 0) {
                                           byte[] part = new byte[n];
                                           System.arraycopy(buf, 0, part, 0, n);
-                                          emit("window.__nativeChunk(" + q(id) + "," + q(Base64.encodeToString(part, Base64.NO_WRAP)) + ")");
+                                          emit("window.__nativeChunk(" + JSONObject.quote(id) + "," + JSONObject.quote(Base64.encodeToString(part, Base64.NO_WRAP)) + ")");
                                       }
                                       in.close();
                                   }
-                                  emit("window.__nativeEnd(" + q(id) + ")");
+                                  emit("window.__nativeEnd(" + JSONObject.quote(id) + ")");
                               } catch (Exception e) {
-                                  emit("window.__nativeErr(" + q(id) + "," + q(String.valueOf(e.getMessage())) + ")");
+                                  emit("window.__nativeErr(" + JSONObject.quote(id) + "," + JSONObject.quote(String.valueOf(e.getMessage())) + ")");
                               } finally {
                                   if (c != null) c.disconnect();
                               }
@@ -227,23 +213,6 @@ jobs:
               }
           }
           EOF
-
-      - name: 准备固定签名
-        run: |
-          if [ -f keystore/b64.txt ]; then
-            base64 -d keystore/b64.txt > app/hrz.jks
-            echo "复用已有签名"
-          else
-            mkdir -p keystore
-            keytool -genkeypair -keystore app/hrz.jks -alias hrz -keyalg RSA -keysize 2048 -validity 10000 -storepass hrzpass123 -keypass hrzpass123 -dname "CN=HRZ,OU=Self,O=Self,L=HK,S=HK,C=HK"
-            base64 -w0 app/hrz.jks > keystore/b64.txt
-            git config user.email "hrz-bot@users.noreply.github.com"
-            git config user.name "hrz-bot"
-            git add keystore/b64.txt
-            git commit -m "chore: 保存签名密钥"
-            git push origin HEAD:main
-            echo "已生成并提交签名密钥"
-          fi
 
       - name: 编译 APK
         run: gradle assembleDebug --no-daemon
