@@ -794,5 +794,145 @@ document.addEventListener('gesturestart',e=>e.preventDefault());
 save();
 </script>
 <script>if("serviceWorker" in navigator && location.protocol.startsWith("http")){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
+<style>
+#boot{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 28%,#14131a,#07070a 72%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px}
+#boot .t{font-family:"Songti SC","Noto Serif SC",serif;font-size:36px;letter-spacing:12px;color:#e9e6e1}
+#boot .s2{font-size:10.5px;letter-spacing:6px;color:#8a8780;margin:10px 0 30px}
+#boot .btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:330px}
+#boot .btns button{padding:15px;font-size:14px;letter-spacing:3px;background:rgba(200,169,98,.06);border:1px solid #2b2a32;color:#e9e6e1}
+#boot .btns button:active{border-color:#c8a962;color:#c8a962}
+#boot .sub{width:100%;max-width:330px;max-height:50vh;overflow:auto;margin-top:14px;display:none}
+#boot .slot{display:block;width:100%;text-align:left;border:1px solid #26252c;background:#101014;padding:12px;margin-bottom:8px;color:#e9e6e1}
+#boot .slot .n{font-size:13.5px}
+#boot .slot .d{font-size:11.5px;color:#8a8780;margin-top:3px}
+.pv{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid #26252c}
+.pv:active{background:rgba(200,169,98,.05)}
+.pv .av{width:32px;height:32px;border-radius:50%;background:#1c1b22;display:flex;align-items:center;justify-content:center;font-size:13px;color:#c8a962;flex:0 0 auto}
+.pv .nm{flex:1;min-width:0;font-size:14px}
+.pv .nm i{display:block;font-style:normal;font-size:11px;color:#8a8780}
+.pv .st{font-size:11px;border:1px solid #2c3a2c;color:#7fae7f;padding:1px 8px;border-radius:10px}
+.pv .st.off{color:#b06a6a;border-color:#3a2c2c}
+</style>
+<script>
+(function(){
+var G=function(id){return document.getElementById(id)};
+var NAMES={openai:"OpenAI 兼容",anthropic:"Anthropic",gemini:"Gemini",ollama:"Ollama"};
+var ORDER=["openai","anthropic","gemini","ollama"];
+S.api.list.forEach(function(p){
+ if(!p.prov)p.prov="openai"; if(!p.url)p.url="https://api.openai.com/v1";
+ if(p.key===undefined)p.key=""; if(p.keys===undefined)p.keys="";
+ if(p.multiKey===undefined)p.multiKey=false; if(!p.group)p.group="其他";
+ if(p.enabled===undefined)p.enabled=true; if(p.model===undefined)p.model="";
+ if(!p.models)p.models=[]; if(!p.max)p.max=900; if(!p.temp)p.temp=0.9;
+});
+save();
+var raw=window.callAI;
+window.callAI=function(m,d){
+ var p=S.api.list[S.api.cur]||{};
+ if(p.multiKey&&p.keys){
+  var a=p.keys.split(String.fromCharCode(10)).join(",").split(",").map(function(t){return t.trim()}).filter(function(t){return t.length>8});
+  if(a.length)p.key=a[Math.floor(Math.random()*a.length)];
+ }
+ return raw(m,d);
+};
+var b=document.createElement("div");
+b.id="boot";
+b.innerHTML=`<div class="t">何 瑞 璋</div><div class="s2">D O M I N I C　H O</div>
+ <div class="btns">
+  <button onclick="app.bNew()">新 开 一 档</button>
+  <button onclick="app.bLoad()">读 取 旧 档</button>
+  <button onclick="app.bGo()" style="background:none;border-color:#1e1d24;color:#8a8780">继 续 上 次</button>
+ </div><div class="sub" id="bSub"></div>`;
+document.body.appendChild(b);
+app.bClose=function(){var x=G("boot");if(x)x.parentNode.removeChild(x)};
+app.bGo=function(){app.bClose()};
+app.bNew=function(){
+ var s=G("bSub");s.style.display="block";
+ s.innerHTML=["初见","恋爱一年","何瑞璋订婚","此刻"].map(function(k){
+  return `<button class="slot" onclick="app.bPick('${k}')"><div class="n">${k}</div><div class="d">重置五值、现金、位置，聊天清空</div></button>`;
+ }).join("");
+};
+app.bPick=function(k){app.stage(k);app.bClose();toast("已开始："+k)};
+app.bLoad=function(){
+ var s=G("bSub");s.style.display="block";var h="";
+ h+=slotHtml("自动存档",S.auto,-1);
+ S.saves.forEach(function(v,i){h+=slotHtml("档位 "+(i+1),v,i)});
+ h+=`<button class="slot" onclick="app.import()"><div class="n">从文件导入</div><div class="d">选一个之前导出的 json 存档</div></button>`;
+ s.innerHTML=h;
+};
+function slotHtml(lab,o,i){
+ if(!o)return `<div class="slot" style="opacity:.4"><div class="n">${lab}</div><div class="d">空</div></div>`;
+ return `<button class="slot" onclick="app.bRead(${i})"><div class="n">${lab}</div><div class="d">${esc(o.tag)} · ${o.n} 条 · ${esc(o.time)}</div></button>`;
+}
+app.bRead=function(i){app.sload(i);app.bClose()};
+var PS={q:"",cur:null};
+op.api=function(i){ if(i!==undefined)PS.cur=i; if(PS.cur===null){pvList()}else{pvDetail()} };
+function pvList(){
+ var L=S.api.list.map(function(p,i){return{p:p,i:i}}).filter(function(x){
+  return !PS.q||x.p.name.indexOf(PS.q)>=0||(x.p.group||"").indexOf(PS.q)>=0;
+ });
+ app.open("供应商",
+  `<div style="display:flex;gap:8px;margin-bottom:8px"><input value="${esc(PS.q)}" placeholder="搜索供应商或分组" oninput="app.pvQ(this.value)" style="flex:1"><button onclick="app.pvAdd()" style="padding:0 18px;font-size:18px">＋</button></div>`
+  +L.map(function(x){var p=x.p;return `<div class="pv" onclick="app.pvOpen(${x.i})"><div class="av">${esc((p.name||"?").slice(0,1))}</div><div class="nm">${esc(p.name)}<i>${esc(p.model||"未选模型")}</i></div><div class="st ${p.enabled?"":"off"}">${p.enabled?"启用":"禁用"}</div><div style="color:#55545e">›</div></div>`}).join("")
+  +`<div class="dim tiny" style="margin-top:12px">当前使用：${esc((S.api.list[S.api.cur]||{}).name||"无")} · 点一行编辑</div>`);
+}
+function pvDetail(){
+ var p=S.api.list[PS.cur]||{}; var i=PS.cur;
+ var opts=ORDER.map(function(k){return `<option value="${k}" ${p.prov===k?"selected":""}>${NAMES[k]}</option>`}).join("");
+ app.open("供应商 · "+esc(p.name||""),
+  `<div class="rowf"><div><label class="f">名称</label><input value="${esc(p.name)}" onchange="app.pvSet('name',this.value)"></div><div><label class="f">分组</label><input value="${esc(p.group)}" onchange="app.pvSet('group',this.value)"></div></div>
+   <label class="f">供应商类型</label><select onchange="app.pvSet('prov',this.value)">${opts}</select>
+   <label class="f">是否启用</label><select onchange="app.pvSet('enabled',this.value==='1')"><option value="1" ${p.enabled?"selected":""}>启用</option><option value="0" ${p.enabled?"":"selected"}>禁用</option></select>
+   <label class="f">Base URL</label><input value="${esc(p.url)}" onchange="app.pvSet('url',this.value)" placeholder="https://api.deepseek.com/v1">
+   <label class="f">API Key</label><input type="password" value="${esc(p.key)}" onchange="app.pvSet('key',this.value)">
+   <label class="f">多 Key 模式</label><select onchange="app.pvSet('multiKey',this.value==='1')"><option value="0" ${p.multiKey?"":"selected"}>关</option><option value="1" ${p.multiKey?"selected":""}>开（随机轮换）</option></select>
+   ${p.multiKey?`<label class="f">Key 列表（一行一个）</label><textarea onchange="app.pvSet('keys',this.value)">${esc(p.keys)}</textarea>`:""}
+   <label class="f">模型</label><input value="${esc(p.model)}" onchange="app.pvSet('model',this.value)" placeholder="deepseek-chat">
+   <div style="display:flex;gap:8px;margin-top:10px"><button style="flex:1;padding:11px" onclick="app.pvFetch()">从接口拉取模型</button><button style="flex:1;padding:11px" onclick="app.pvTest()">测试连接</button></div>
+   ${p.models&&p.models.length?`<div class="chips" style="margin-top:10px">${p.models.slice(0,80).map(function(m){return `<button class="${m===p.model?"on":""}" onclick="app.pvPick('${m}')">${esc(m)}</button>`}).join("")}</div>`:"<div class='dim tiny' style='margin-top:8px'>还没有模型列表，点上面「从接口拉取模型」</div>"}
+   <div class="rowf" style="margin-top:10px"><div><label class="f">max_tokens</label><input type="number" value="${p.max}" onchange="app.pvSet('max',Number(this.value))"></div><div><label class="f">temperature</label><input type="number" step="0.1" value="${p.temp}" onchange="app.pvSet('temp',Number(this.value))"></div></div>
+   <div style="display:flex;gap:8px;margin-top:14px"><button style="flex:1;padding:12px" onclick="app.pvUse()">设为当前使用</button><button style="flex:1;padding:12px" onclick="app.pvDel()">删除</button></div>
+   <button style="width:100%;padding:12px;margin-top:8px;color:#8a8780" onclick="app.pvBack()">← 返回供应商列表</button>`);
+}
+app.pvQ=function(v){PS.q=v;pvList()};
+app.pvOpen=function(i){PS.cur=i;pvDetail()};
+app.pvBack=function(){PS.cur=null;pvList()};
+app.pvSet=function(k,v){S.api.list[PS.cur][k]=v;save();if(k==="multiKey")pvDetail()};
+app.pvPick=function(m){S.api.list[PS.cur].model=m;save();pvDetail()};
+app.pvUse=function(){S.api.cur=PS.cur;save();toast("当前："+S.api.list[PS.cur].name)};
+app.pvAdd=function(){
+ S.api.list.push({name:"新供应商",prov:"openai",url:"https://api.openai.com/v1",key:"",keys:"",multiKey:false,group:"其他",enabled:true,model:"",models:[],max:900,temp:0.9});
+ PS.cur=S.api.list.length-1;save();pvDetail();
+};
+app.pvDel=function(){
+ if(S.api.list.length<2)return toast("至少留一个");
+ S.api.list.splice(PS.cur,1);S.api.cur=0;PS.cur=null;save();pvList();
+};
+app.pvFetch=async function(){
+ var p=S.api.list[PS.cur]; var base=(p.url||"").replace(/[/]+$/,"");
+ try{
+  var url,hd={};
+  if(p.prov==="anthropic"){url=base+"/v1/models";hd["x-api-key"]=p.key;hd["anthropic-version"]="2023-06-01";hd["anthropic-dangerous-direct-browser-access"]="true";}
+  else if(p.prov==="gemini"){url=base+"/v1beta/models?key="+encodeURIComponent(p.key);}
+  else if(p.prov==="ollama"){url=base.replace(/[/]v1$/,"")+"/api/tags";}
+  else{url=base+"/models";hd["Authorization"]="Bearer "+p.key;}
+  var r=await fetch(url,{headers:hd});
+  var j=await r.json();
+  var ids=((j.data)||(j.models)||[]).map(function(m){return m.id||m.name||""}).filter(Boolean);
+  if(p.prov==="gemini")ids=ids.map(function(x){return x.split("/").pop()});
+  if(!ids.length)throw new Error("返回里没有模型");
+  p.models=ids; if(!p.model)p.model=ids[0];
+  save();pvDetail();toast("拉到 "+ids.length+" 个模型");
+ }catch(e){toast("拉取失败："+e.message)}
+};
+app.pvTest=async function(){
+ var o=S.api.cur;S.api.cur=PS.cur;
+ try{var t="";await window.callAI([{role:"user",content:"只回两个字：通了"}],function(d){t+=d});
+  toast(t?("成功："+t.slice(0,14)):"返回空");}
+ catch(e){toast(e.message)}
+ S.api.cur=o;save();
+};
+})();
+</script>
 </body>
 </html>
