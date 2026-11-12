@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<title>何瑞璋 · DOMINIC HO</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100dvh}
+body[data-theme=gold]{--acc:#c8a962;--accbg:rgba(200,169,98,.13)}
+body[data-theme=red]{--acc:#a3222c;--accbg:rgba(163,34,44,.16)}
+body[data-theme=gray]{--acc:#7d8790;--accbg:rgba(125,135,144,.14)}
+body{--bg:#0a0a0c;--pnl:#101014;--ln:#26252c;--tx:#e9e6e1;--dm:#8a8780;
+  background:var(--bg);color:var(--tx);font:14px/1.75 -apple-system,"PingFang SC","Noto Sans SC",sans-serif;
+  display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:var(--tx);background:transparent;border:1px solid var(--ln);padding:8px 10px;cursor:pointer;transition:.15s}
+button:active{background:var(--accbg)}
+.hidden{display:none!important}
+.dim{color:var(--dm)}.tiny{font-size:11px;line-height:1.5}
+.serif{font-family:"Songti SC","Noto Serif SC",serif}
+
+/* 顶栏 */
+header{flex:0 0 auto;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--ln)}
+.brand{font-size:14px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sep{color:#3a3941;margin:0 7px}
+header nav{display:none}
+
+main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+#center{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+#side,#right{display:none}
+
+#log{flex:1 1 auto;overflow:auto;padding:14px 14px 6px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.evt{text-align:center;font-size:11.5px;color:#4d4b55;letter-spacing:1px;margin:12px 0 18px}
+.msg{margin-bottom:16px}
+.msg .who{font-size:11.5px;color:var(--dm);margin-bottom:4px}
+.msg.user{text-align:right}
+.msg.user .txt{display:inline-block;text-align:left;border-right:2px solid var(--acc);padding-right:11px}
+.msg.ai .txt{border-left:2px solid #2b2a32;padding-left:12px}
+.msg .txt{white-space:pre-wrap;word-break:break-word}
+
+/* 态度条（移动端常驻） */
+#attRow{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:7px 12px;border-top:1px solid var(--ln);scrollbar-width:none}
+#attRow::-webkit-scrollbar{display:none}
+#attRow button{flex:0 0 auto;border-radius:16px;padding:5px 13px;font-size:12.5px;background:var(--pnl)}
+#attRow button.on{border-color:var(--acc);color:var(--acc);background:var(--accbg)}
+
+#composer{flex:0 0 auto;display:flex;gap:8px;align-items:flex-end;padding:8px 12px;border-top:1px solid var(--ln);background:var(--bg)}
+#inp{flex:1;resize:none;height:44px;max-height:132px;font-size:16px;line-height:1.6;background:var(--pnl);border:1px solid var(--ln);color:var(--tx);padding:10px 11px;outline:none;border-radius:2px}
+#inp:focus{border-color:var(--acc)}
+button.main{background:var(--accbg);border-color:var(--acc);color:var(--acc);padding:11px 18px;border-radius:2px;white-space:nowrap}
+
+/* 底部导航 */
+#bnav{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--ln);background:#0c0c0f;padding-bottom:env(safe-area-inset-bottom)}
+#bnav button{border:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 7px;font-size:10.5px;color:var(--dm);border-radius:0}
+#bnav button i{font-style:normal;font-size:15px;line-height:1.1}
+#bnav button.on{color:var(--acc)}
+
+/* 弹层 / 底部抽屉 */
+#mask{position:fixed;inset:0;background:rgba(4,4,6,.8);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+#modal{background:var(--bg);border:1px solid var(--ln);border-radius:14px 14px 0 0;width:100%;max-height:88dvh;overflow:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(20px + env(safe-area-inset-bottom));position:relative}
+#modal h2{font-family:"Songti SC",serif;font-size:18px;letter-spacing:2px;margin:0 26px 3px 0;font-weight:400}
+#modal .sub{font-size:12px;color:var(--dm);margin-bottom:14px}
+#modal .x{position:absolute;top:6px;right:6px;border:none;font-size:16px;color:var(--dm);width:40px;height:40px}
+#modal .grab{width:36px;height:3px;background:#2e2d35;border-radius:3px;margin:-4px auto 10px}
+
+.grid{display:grid;gap:10px;grid-template-columns:1fr}
+.card{border:1px solid var(--ln);padding:12px;background:var(--pnl)}
+.card .t{font-size:14px}
+.card .s{font-size:11.5px;color:var(--dm)}
+.card .p{font-family:"Songti SC",serif;font-size:18px;color:var(--acc);margin:5px 0}
+.card .d{font-size:12px;color:var(--dm);line-height:1.6}
+input,textarea,select{font:inherit;font-size:16px;background:var(--pnl);border:1px solid var(--ln);color:var(--tx);padding:10px 11px;outline:none;width:100%;border-radius:2px}
+input:focus,textarea:focus,select:focus{border-color:var(--acc)}
+textarea{resize:vertical;min-height:72px}
+label.f{display:block;font-size:12px;color:var(--dm);margin:10px 0 4px}
+.rowf{display:flex;gap:10px;flex-wrap:wrap}
+.rowf>*{flex:1;min-width:130px}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--ln);padding:0 6px;color:var(--dm);margin-left:4px}
+.dice{display:flex;gap:12px;justify-content:center;margin:18px 0}
+.dice div{width:64px;height:64px;border:1px solid var(--ln);display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--pnl);border-radius:8px;color:var(--acc)}
+.bets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.bets button{padding:14px 4px;font-size:14px;background:var(--pnl)}
+.bets button small{display:block;color:var(--dm);font-size:11px}
+.chips{display:flex;gap:7px;margin:10px 0;flex-wrap:wrap}
+.chips button{border-radius:18px;padding:5px 13px;font-size:12.5px;background:var(--pnl)}
+.chips button.on{border-color:var(--acc);color:var(--acc)}
+.list{border:1px solid var(--ln);padding:10px 11px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--pnl)}
+.list .l{min-width:0}
+.list .n{font-size:13.5px}
+.list .s{font-size:11.5px;color:var(--dm);word-break:break-word}
+.bar{margin-bottom:12px}
+.bar .row{display:flex;justify-content:space-between;font-size:13px}
+.bar .row b{font-weight:500;color:var(--acc)}
+.track{height:3px;background:#1e1d23;margin:5px 0 3px}
+.track i{display:block;height:3px;background:linear-gradient(90deg,var(--acc),transparent)}
+.lab{font-size:12px;color:var(--dm);letter-spacing:1px;margin:14px 0 7px}
+button.block{display:block;width:100%;text-align:left;margin-bottom:6px;font-size:13.5px;padding:11px 12px;background:var(--pnl);border-radius:2px}
+.phone{background:#0d0d10;border:1px solid var(--ln);padding:14px;border-radius:6px}
+.phead{display:flex;justify-content:space-between;font-size:11.5px;color:var(--dm);margin-bottom:12px}
+.wbig{font-family:"Songti SC",serif;font-size:28px;letter-spacing:1px;margin:2px 0}
+.sect{border-top:1px solid var(--ln);margin-top:12px;padding-top:10px}
+.sect .h{display:flex;justify-content:space-between;font-size:12px;color:var(--dm);margin-bottom:7px}
+.sect .h em{font-style:normal;font-size:10px;letter-spacing:1px;color:#3d3c45}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:4px 0}
+.kv span:first-child{color:var(--dm)}
+#toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1a1a20;border:1px solid var(--acc);color:var(--tx);padding:8px 16px;font-size:13px;z-index:99;opacity:0;transition:.25s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.on{opacity:1}
+
+/* ===== 桌面端 ===== */
+@media(min-width:901px){
+  header{height:52px;padding:0 16px}
+  .brand{font-size:15px}
+  header nav{display:flex;gap:6px}
+  header nav button{font-size:12px;padding:4px 9px;border-color:transparent;color:var(--dm)}
+  header nav button:hover{color:var(--acc);border-color:var(--ln)}
+  #bnav{display:none}
+  main{display:grid;grid-template-columns:236px 1fr 330px}
+  #side,#right{display:block;overflow:auto;padding:16px 14px;border-right:1px solid var(--ln)}
+  #right{border-right:none;border-left:1px solid var(--ln)}
+  #attRow{display:none}
+  #log{padding:24px 40px 8px}
+  .msg{max-width:760px}
+  .msg.user{margin-left:auto}
+  #composer{padding:12px 18px}
+  #inp{height:56px;font-size:14px}
+  #mask{align-items:center;padding:24px}
+  #modal{border-radius:0;max-width:880px;max-height:86vh;padding:22px 24px 26px}
+  #modal .x{top:10px;right:10px}
+  #modal .grab{display:none}
+  .grid{gap:10px}
+  .grid.g2{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+  #toast{bottom:36px}
+}
+</style>
+</head>
+<body data-theme="gold">
+<header>
+  <div class="brand serif"><b>何瑞璋</b><span class="sep">·</span><span id="posTag" class="dim"></span><span class="sep">·</span><span id="clock" class="dim"></span></div>
+  <nav>
+    <button onclick="app.m('map')">地图</button>
+    <button onclick="app.m('phone')">手机</button>
+    <button onclick="app.m('assets')">资产</button>
+    <button onclick="app.m('saves')">存档</button>
+    <button onclick="app.m('wb')">世界书</button>
+    <button onclick="app.m('mem')">记忆</button>
+    <button onclick="app.m('cfg')">设定</button>
+    <button onclick="app.m('api')">API</button>
+    <button id="rainBtn" onclick="app.rain()">雨声</button>
+    <button onclick="app.theme()">色调</button>
+  </nav>
+</header>
+
+<main>
+  <aside id="side"></aside>
+  <section id="center">
+    <div id="log"></div>
+    <div id="attRow"></div>
+    <div id="composer">
+      <textarea id="inp" rows="1" placeholder="说点什么……"></textarea>
+      <button class="main" onclick="app.send()">发送</button>
+    </div>
+  </section>
+  <aside id="right"></aside>
+</main>
+
+<div id="bnav">
+  <button onclick="app.m('bars')"><i>▮</i>五值</button>
+  <button onclick="app.m('map')"><i>◈</i>地图</button>
+  <button onclick="app.m('phone')"><i>▤</i>手机</button>
+  <button onclick="app.m('shop')"><i>◇</i>AURUM</button>
+  <button onclick="app.m('more')"><i>⋯</i>更多</button>
+</div>
+
+<div id="mask" class="hidden"><div id="modal"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ================= 基础 ================= */
+const $=s=>document.querySelector(s), K='hrz_dom_ho_v2';
+const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1900)};
+const cmoney=n=>{n=Number(n)||0;const a=Math.abs(n);if(a>=1e8)return (n/1e8).toFixed(2).replace(/\.?0+$/,'')+' 亿';if(a>=1e4)return (n/1e4).toFixed(1).replace(/\.0$/,'')+' 万';return String(n)};
+const nf=n=>Number(n||0).toLocaleString('en-US');
+const tok=t=>Math.ceil((t||'').length*0.7);
+
+const DEF_PROMPT='你是这段故事的记录员。把「新增剧情」并进「已有摘要」，写成不超过 400 字的中文摘要。\n保留：关系变化、他说过的重要的话、去过的地方、答应过的事、没解决的矛盾。\n\n【已有摘要】\n{{old}}\n\n【新增剧情】\n{{new}}';
+const ATTS=[['温柔地回','温柔'],['冷淡地回','冷淡'],['试探地','试探'],['生气地回','生气'],['撒娇','撒娇'],['不出声','不出声']];
+const STAGES={
+  '初见':      {money:5000,   stock:'无',          aff:5,  love:0,  trust:2,  ctrl:20, danger:3,  pos:'澳门 · 主力娱乐场'},
+  '恋爱一年':  {money:200000, stock:'澳博 300 股', aff:45, love:38, trust:30, ctrl:45, danger:10, pos:'小宝 · 半山别墅 · 客厅'},
+  '何瑞璋订婚':{money:800000, stock:'长实 500 股', aff:60, love:52, trust:44, ctrl:66, danger:26, pos:'何家老宅 · 大厅'},
+  '此刻':      {money:56000,  stock:'无',          aff:18, love:0,  trust:12, ctrl:35, danger:8,  pos:'小宝 · 半山别墅 · 客厅'}
+};
+const PLACES=['小宝 · 半山别墅','澳门 · 主力娱乐场','中环 AURUM 私选','何家老宅','半岛酒店 · 大堂吧','跑马地 · 马场','尖沙咀 · 夜总会','南丫岛 · 码头','湾仔 · 会所','波尔多 · 酒庄','何氏大厦 78 楼'];
+const SHOP=[
+ {c:'衣饰',n:'墨绿丝绒长裙',p:88000,d:'中环一个不挂牌的裁缝做的。',req:12},
+ {c:'衣饰',n:'象牙白真丝衬衫',p:26000,d:'很安静的一件。',req:8},
+ {c:'首饰',n:'素圈钻戒（不镶）',p:420000,d:'碎钻藏在戒臂内侧。',req:40},
+ {c:'首饰',n:'百达翡丽 · 复杂功能',p:3800000,d:'他抽屉里有六块。',req:55},
+ {c:'车',n:'阿斯顿 · 马丁 DB12',p:4600000,d:'他车库里那台 GT3 终于不是唯一有声音的车。',req:50},
+ {c:'玩物',n:'栗色纯血马',p:12800000,d:'养在他的马场，Shadow 隔壁。',req:58},
+ {c:'宅邸',n:'南丫岛庄园',p:860000000,d:'过户那天他没说什么，只签了字。',req:70},
+ {c:'礼物',n:'万宝龙 1930 复刻钢笔',p:46000,d:'他签过很多份文件，笔尖是他的字迹。',req:10},
+ {c:'礼物',n:'黑玛瑙袖扣',p:78000,d:'和那枚家族戒指同一个颜色。',req:14}
+];
+
+function defState(){return{
+  theme:'gold', stage:'此刻', clock:'22:47',
+  user:{name:'你',age:26,money:56000,stock:'无',persona:'26 岁，从内地来港半年，在何家的场子里做事。你不算客人，也不是主人。',home:'小宝 · 半山别墅'},
+  him:{aff:18,love:0,trust:12,ctrl:35,danger:8,mood:'看不出情绪，像平时一样'},
+  pos:{you:'小宝 · 半山别墅 · 客厅',him:'澳门 · 主力娱乐场'},
+  attitude:'', chat:[],
+  mem:{summary:'',every:10,read:8,prompt:DEF_PROMPT},
+  wb:{on:true,items:[],limit:0,saveflow:false},
+  ps:{on:true,items:[],limit:0,saveflow:false},
+  saves:[null,null,null,null], auto:null, owned:[], spent:0, gifted:0, net:241175000000, myNet:0,
+  api:{list:[{name:'OpenAI 兼容',prov:'openai',url:'https://api.openai.com/v1',key:'',model:'gpt-4o-mini',max:900,temp:0.9}],cur:0},
+  shopCustom:[], lastBet:5000,
+  phone:{msg:[{n:'赵敏言',t:'未婚妻',time:'21:09',c:'外面嘅事我唔理。但唔好搞到上封面。'},
+              {n:'何瑞珩',t:'二弟',time:'20:41',c:'做好你份事。'},
+              {n:'何瑞廷',t:'三弟',time:'02:14',c:'唔好搞佢。'},
+              {n:'何瑞仪',t:'大姐',time:'18:20',c:'父亲嗰边，你同佢讲两句。佢老咗。'},
+              {n:'Alan',t:'助理',time:'18:40',c:'报告放我台上。'},
+              {n:'她',t:'你',time:'17:22',c:'夜啲我自己揸车。'}],
+         calls:[{n:'赵敏言',time:'20:12',c:'未接 · 12 秒'},{n:'Alan',time:'18:02',c:'已接 · 4 分 06 秒'}],
+         notes:[{n:'围骰通吃，唔好再落 5k。',time:'10 月 24'},{n:'她怕黑，走廊灯留一盏。',time:'10 月 19'}]}
+}}
+let S, WBT='ps', SHOPCAT='全部';
+try{S=Object.assign(defState(),JSON.parse(localStorage.getItem(K)||localStorage.getItem('hrz_dom_ho_v1')||'{}'))}catch(e){S=defState()}
+const save=()=>localStorage.setItem(K,JSON.stringify(S));
+
+/* ================= 渲染 ================= */
+function renderSide(){
+  const h=S.him, v=[['好感度',h.aff,'她给你留给心与时间'],['爱意',h.love,'真正动意，勾起心尖'],['信任',h.trust,'他愿意让你看见多少'],['掌控欲',h.ctrl,'他想握住你多少'],['危险',h.danger,'局势两头还有多远']];
+  $('#side').innerHTML=
+   `<div class="rel" style="font-size:12px;color:var(--dm);letter-spacing:2px;margin-bottom:14px">关系 · ${esc(S.stage)}</div>`+
+   v.map(([n,val,d])=>`<div class="bar"><div class="row"><span>${n}</span><b>${val||0}</b></div><div class="track"><i style="width:${Math.min(100,val||0)}%"></i></div><div class="dim tiny">${d}</div></div>`).join('')+
+   `<button class="block" onclick="app.m('cfg')">她的人设：查看 / 修改</button>
+    <div class="lab">怎么回他</div>`+
+   ATTS.map(([n,d])=>`<button class="block" onclick="app.att('${n}')">${n} <span class="dim tiny">${d}</span></button>`).join('')+
+   `<div class="mood" style="font-size:12.5px;margin:12px 0;padding-top:12px;border-top:1px solid var(--ln)">他此刻：<span class="dim">${esc(h.mood)}</span></div>
+    <div class="lab">操作</div>
+    <button class="block" onclick="app.retry()">↻ 重roll</button>
+    <button class="block" onclick="app.edit('user')">改我的话</button>
+    <button class="block" onclick="app.edit('assistant')">改他的话</button>
+    <button class="block" onclick="app.search()">搜索聊天内容</button>`;
+}
+function renderRight(){
+  const h=S.him;
+  $('#right').innerHTML=`
+  <div class="phone">
+    <div class="phead"><span>${esc(S.clock)}</span><span>何家 5G ▮▮▮</span></div>
+    <div class="dim tiny">钱包</div>
+    <div class="wbig">${nf(Math.round(S.user.money))}</div>
+    <div class="dim tiny">现金 HK$ ${cmoney(S.user.money)} · 名下 ${S.owned.length} 件 · 允许度 ${h.aff}</div>
+    <div style="margin-top:12px;display:flex;gap:6px">
+      <button style="flex:1" onclick="app.m('assets')">资产</button>
+      <button style="flex:1" onclick="app.m('shop')">AURUM</button>
+    </div>
+    <div class="sect"><div class="h">名下 <em>UNDER MY NAME</em></div>
+      ${S.owned.length?S.owned.map(n=>`<div class="kv"><span>${esc(n)}</span><span class="dim">已有</span></div>`).join(''):'<div class="dim tiny">名下什么都没有。</div>'}
+      <div class="kv"><span>${esc(S.user.home)}</span><span class="dim">租住</span></div>
+    </div>
+    <div class="sect"><div class="h">他给的 <em>FROM HIM</em></div>
+      <div class="kv"><span>他为妳花过</span><span>HK$ ${cmoney(S.gifted)}</span></div>
+      <div class="kv"><span>掌控欲</span><span>${h.ctrl}</span></div>
+      <div class="dim tiny" style="margin-top:6px">仅记录 · 数字都是虚构的</div>
+    </div>
+  </div>`;
+}
+function renderAtt(){
+  $('#attRow').innerHTML=ATTS.map(([full,short])=>`<button class="${S.attitude===full?'on':''}" onclick="app.att('${full}')">${short}</button>`).join('');
+}
+function renderChat(){
+  const box=$('#log');
+  box.innerHTML=S.chat.length?'':`<div class="evt">第 ${esc(S.stage)} · ${esc(S.pos.you)} · ${esc(S.clock)}</div>`;
+  S.chat.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='msg '+(m.role==='user'?'user':'ai');
+    d.innerHTML=`<div class="who">${m.role==='user'?esc(S.user.name):'何瑞璋'} · ${esc(S.clock)}</div><div class="txt">${esc(m.text)}</div>`;
+    box.appendChild(d);
+  });
+  box.scrollTop=box.scrollHeight;
+}
+function render(){
+  renderSide();renderRight();renderAtt();renderChat();
+  $('#posTag').textContent=S.pos.you+' · 何瑞璋在'+S.pos.him;
+  $('#clock').textContent=S.clock;
+  document.body.dataset.theme=S.theme;
+}
+
+/* ================= 提示词 ================= */
+function activeItems(g){
+  const arr=(g.items||[]).filter(i=>i.on).slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  let out=arr.map(i=>`【${i.name||'条目'}】\n${i.content||''}`).join('\n\n');
+  if(g.saveflow&&g.limit>0&&out.length>g.limit) out=out.slice(0,g.limit)+'\n（以下省略）';
+  return out;
+}
+function sysPrompt(){
+  const h=S.him, L=[];
+  L.push('你正在扮演「何瑞璋 DOMINIC HO」：港澳顶级豪门何家长子，致远集团董事会主席，家族话事人。寸头、金丝眼镜、定制黑西装，左手无名指一枚素圈。说话极简、不解释、不重复；发火时音量反而更低。粤语对白给原文，并在括号里给普通话翻译。不要替用户写台词，不要写旁白总结，一次只输出他这一段。');
+  L.push(`【用户人设】${S.user.name}，${S.user.age} 岁。${S.user.persona}`);
+  L.push(`【当前节点】${S.stage}`);
+  L.push(`【五值】好感 ${h.aff}／爱意 ${h.love}／信任 ${h.trust}／掌控欲 ${h.ctrl}／危险 ${h.danger}。数值低则冷淡保留，高才允许松口。`);
+  L.push(`【他此刻的情绪】${h.mood}`);
+  L.push(`【位置】她在 ${S.pos.you}；你在 ${S.pos.him}。`);
+  if(S.mem.summary) L.push(`【剧情摘要（你的记忆）】\n${S.mem.summary}`);
+  if(S.ps.on){const p=activeItems(S.ps); if(p) L.push(`【预设】\n${p}`);}
+  if(S.wb.on&&S.wb.items.length){
+    const recent=S.chat.slice(-4).map(m=>m.text).join('\n');
+    const hit=S.wb.items.filter(i=>i.on&&(!i.keys||!i.keys.length||i.keys.some(k=>k&&recent.includes(k))));
+    if(hit.length) L.push('【世界书】\n'+activeItems({items:hit,limit:S.wb.limit,saveflow:S.wb.saveflow}));
+  }
+  if(S.attitude) L.push(`【本轮态度】${S.attitude}。请按这个态度回应。`);
+  L.push('【格式】对白用「」，动作与环境写成独立短段，不用 markdown 标题，不加解释。');
+  return L.join('\n\n');
+}
+function buildMsgs(){
+  const n=Math.max(1,Number(S.mem.read)||8)*2;
+  const msgs=[{role:'system',content:sysPrompt()}];
+  S.chat.filter(m=>m.text).slice(-n).forEach(m=>msgs.push({role:m.role==='user'?'user':'assistant',content:m.text}));
+  if(!S.chat.length) msgs.push({role:'user',content:'（场景开始。请以何瑞璋的身份先开口一句。）'});
+  return msgs;
+}
+
+/* ================= API ================= */
+async function sse(res,onDelta,ex){
+  const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
+  while(true){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
+    const ps=buf.split('\n\n');buf=ps.pop();
+    for(const p of ps){const ln=p.split('\n').find(l=>l.trim().startsWith('data:'));if(!ln)continue;
+      let d=ln.trim().slice(5).trim();if(!d||d==='[DONE]')continue;
+      let j;try{j=JSON.parse(d)}catch(e){continue}
+      const t=ex(j);if(t)onDelta(t);}}
+}
+async function callAI(msgs,onDelta){
+  const c=S.api.list[S.api.cur]||{}; if(!c.model) throw new Error('先在「API」里填模型名');
+  const base=(c.url||'').replace(/\/+$/,'');
+  let res;
+  if(c.prov==='openai'||c.prov==='ollama'){
+    const url=/chat\/completions$/.test(base)?base:base+'/chat/completions';
+    res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(c.key?{Authorization:'Bearer '+c.key}:{})},
+      body:JSON.stringify({model:c.model,messages:msgs,temperature:Number(c.temp)||0.9,max_tokens:Number(c.max)||900,stream:true})});
+    if(!res.ok) throw new Error('API '+res.status+'：'+(await res.text()).slice(0,160));
+    await sse(res,onDelta,j=>j.choices?.[0]?.delta?.content||'');
+  }else if(c.prov==='anthropic'){
+    const sys=msgs.filter(m=>m.role==='system').map(m=>m.content).join('\n\n');
+    const rest=msgs.filter(m=>m.role!=='system');
+    res=await fetch(base+'/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:c.model,max_tokens:Number(c.max)||900,temperature:Number(c.temp)||0.9,system:sys,messages:rest,stream:true})});
+    if(!res.ok) throw new Error('API '+res.status+'：'+(await res.text()).slice(0,160));
+    await sse(res,onDelta,j=>j.type==='content_block_delta'?(j.delta?.text||''):'');
+  }else{
+    const url=base+'/v1beta/models/'+encodeURIComponent(c.model)+':streamGenerateContent?alt=sse&key='+encodeURIComponent(c.key);
+    const sys=msgs.filter(m=>m.role==='system').map(m=>m.content).join('\n\n');
+    const contents=msgs.filter(m=>m.role!=='system').map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
+    res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents,systemInstruction:{parts:[{text:sys}]},generationConfig:{temperature:Number(c.temp)||0.9,maxOutputTokens:Number(c.max)||900}})});
+    if(!res.ok) throw new Error('API '+res.status+'：'+(await res.text()).slice(0,160));
+    await sse(res,onDelta,j=>(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join(''));
+  }
+}
+
+/* ================= 交互 ================= */
+const app={
+  theme(){S.theme=S.theme==='gold'?'red':S.theme==='red'?'gray':'gold';save();render();app.close();toast('色调：'+(S.theme==='gold'?'黑金':S.theme==='red'?'深红':'冷灰'))},
+  att(a){S.attitude=(S.attitude===a?'':a);save();render()},
+  async send(){
+    const inp=$('#inp'), t=inp.value.trim(); if(!t) return;
+    inp.value=''; inp.style.height='44px';
+    S.chat.push({role:'user',text:t});
+    S.chat.push({role:'assistant',text:''});
+    const idx=S.chat.length-1, att=S.attitude;
+    S.attitude=''; save(); render();
+    const box=$('#log'), el=box.lastChild.querySelector('.txt');
+    el.textContent='…';
+    let acc='';
+    try{
+      await callAI(buildMsgs(),d=>{acc+=d;el.textContent=acc;box.scrollTop=box.scrollHeight});
+      if(!acc) acc='（他没有回话。）';
+    }catch(e){acc='⚠️ '+e.message;}
+    S.chat[idx].text=acc; save(); render();
+    if(Number(S.mem.every)>0 && S.chat.filter(m=>m.role==='user').length%Number(S.mem.every)===0) app.summarize(true);
+  },
+  async retry(){
+    if(!S.chat.length) return toast('还没有对话');
+    let i=S.chat.length-1;
+    if(S.chat[i].role==='assistant') S.chat.splice(i,1);
+    const last=[...S.chat].reverse().find(m=>m.role==='user');
+    if(!last) return toast('没有可重roll的内容');
+    const text=last.text; S.chat.pop();
+    $('#inp').value=text; save(); render(); app.send();
+  },
+  edit(r){
+    const idx=[...S.chat].map((m,i)=>m.role===r?i:-1).filter(i=>i>=0).pop();
+    if(idx===undefined) return toast('没有可修改的内容');
+    app.close();
+    const v=prompt('修改这句：',S.chat[idx].text); if(v==null) return;
+    S.chat[idx].text=v; save(); render();
+  },
+  search(){
+    const q=prompt('搜索聊天内容：'); if(!q) return;
+    const hits=S.chat.map((m,i)=>({i,...m})).filter(m=>m.text.includes(q));
+    app.open('搜索：'+q, hits.length?hits.map(m=>`<div class="list"><div class="l"><div class="n">${m.role==='user'?esc(S.user.name):'何瑞璋'}</div><div class="s">${esc(m.text.slice(0,140))}</div></div><span class="tag">#${m.i+1}</span></div>`).join(''):'<div class="dim">没有找到。</div>');
+  },
+  rain(){
+    const b=$('#rainBtn');
+    if(window._rain){try{window._rain.close()}catch(e){};window._rain=null;toast('雨声已关');return}
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const len=ctx.sampleRate*3, buf=ctx.createBuffer(1,len,ctx.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+    const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1500;
+    const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=200;
+    const g=ctx.createGain();g.gain.value=0.16;
+    src.connect(lp);lp.connect(hp);hp.connect(g);g.connect(ctx.destination);src.start();
+    window._rain=ctx;toast('雨声已开');
+  },
+  open(t,html){$('#modal').innerHTML=`<div class="grab"></div><button class="x" onclick="app.close()">✕</button><h2>${t}</h2>${html}`;$('#mask').classList.remove('hidden')},
+  close(){$('#mask').classList.add('hidden')},
+  m(k){(op[k]||(()=>{}))()}
+};
+
+/* ================= 弹窗 ================= */
+const op={};
+op.bars=function(){
+  const h=S.him, v=[['好感度',h.aff,'她给你留给心与时间'],['爱意',h.love,'真正动意，勾起心尖'],['信任',h.trust,'他愿意让你看见多少'],['掌控欲',h.ctrl,'他想握住你多少'],['危险',h.danger,'局势两头还有多远']];
+  app.open('关系 · '+esc(S.stage),`
+  <div class="sub">何瑞璋 · 他此刻：${esc(h.mood)}</div>
+  ${v.map(([n,val,d])=>`<div class="bar"><div class="row"><span>${n}</span><b>${val||0}</b></div><div class="track"><i style="width:${Math.min(100,val||0)}%"></i></div><div class="dim tiny">${d}</div></div>`).join('')}
+  <div class="lab">怎么回他</div>
+  <div class="chips">${ATTS.map(([f,s])=>`<button class="${S.attitude===f?'on':''}" onclick="app.att('${f}');app.close()">${f}</button>`).join('')}</div>
+  <div class="lab">操作</div>
+  <button class="block" onclick="app.close();app.retry()">↻ 重roll</button>
+  <button class="block" onclick="app.edit('user')">改我的话</button>
+  <button class="block" onclick="app.edit('assistant')">改他的话</button>
+  <button class="block" onclick="app.search()">搜索聊天内容</button>
+  <button class="block" onclick="app.m('cfg')">她的人设：查看 / 修改</button>`);
+};
+op.more=function(){
+  app.open('更多',`
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    ${[['assets','资产'],['saves','存档'],['wb','世界书 / 预设'],['mem','记忆'],['cfg','设定 / 开局'],['api','API 适配'],['casino','澳门 · 娱乐场'],['bars','五值与操作']].map(([k,n])=>`<button style="padding:16px 8px" onclick="app.m('${k}')">${n}</button>`).join('')}
+  </div>
+  <div class="lab">环境</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button style="padding:12px 16px" onclick="app.rain();app.close()">🌧 雨声开关</button>
+    <button style="padding:12px 16px" onclick="app.theme()">🎨 切换色调</button>
+  </div>
+  <div class="lab">数据</div>
+  <div style="display:flex;gap:8px">
+    <button style="flex:1;padding:12px" onclick="app.export()">导出存档</button>
+    <button style="flex:1;padding:12px" onclick="app.import()">导入存档</button>
+  </div>
+  <div class="dim tiny" style="margin-top:12px">存档在浏览器本地；世界书与预设也会一起存。</div>`);
+};
+op.map=function(){
+  app.open('地图 · 11 个地点',`<div class="sub">你在 ${esc(S.pos.you)}｜何瑞璋在 ${esc(S.pos.him)}</div>
+  <div class="grid">${PLACES.map(p=>`<div class="card"><div class="t">${esc(p)}</div>
+    <div class="d">${p===S.pos.him?'<span style="color:var(--acc)">何瑞璋在此</span>':p===S.pos.you?'你在这里':'没有人'}</div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button style="flex:1;padding:11px" onclick="app.go('${esc(p)}')">前往</button>
+      ${p===S.pos.him?`<button style="flex:1;padding:11px" onclick="app.find()">堵他</button>`:`<button style="flex:1;padding:11px" onclick="app.npc('${esc(p)}')">逛一逛</button>`}
+    </div></div>`).join('')}</div>`);
+};
+app.go=p=>{S.pos.you=p;save();render();op.map()};
+app.find=()=>{S.pos.you=S.pos.him;S.chat.push({role:'assistant',text:'（你到了他所在的地方。他没有抬头，只把杯子往你那边推了半寸。）'});save();render();app.close();toast('已到 '+S.pos.him)};
+app.npc=p=>{const L=['（走廊只开了一盏灯，地毯把脚步声吃掉。）','（玻璃外是海，风把窗推得很轻地响。）','（有人在远处笑，笑声到这里已经散了。）','（空气里有一点雪茄和冷气混起来的味道。）'];
+  S.chat.push({role:'assistant',text:`（${p}）`+L[Math.floor(Math.random()*L.length)]});save();render();app.close()};
+
+/* 赌场 */
+op.casino=function(){
+  const bet=S.lastBet||5000;
+  app.open('澳门 · 主力娱乐场',`
+  <div class="sub">何家的场子 · 贵宾厅在二楼</div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="dim">现金 HK$ ${cmoney(S.user.money)}</span><span class="dim">本局 HK$ ${nf(bet)}</span></div>
+  <div class="dice"><div>⚀</div><div>⚂</div><div>⚅</div></div>
+  <div class="chips">${[1000,5000,10000,50000].map(v=>`<button class="${bet===v?'on':''}" onclick="app.chip(${v})">${cmoney(v)}</button>`).join('')}</div>
+  <div class="bets"><button onclick="app.dice('big')">大 11-17<small>1 : 1</small></button>
+  <button onclick="app.dice('small')">小 4-10<small>1 : 1</small></button>
+  <button onclick="app.dice('triple')">围骰<small>1 : 24</small></button></div>
+  <button class="block" style="margin-top:10px;text-align:center" onclick="app.slot()">🎰 老虎机（三同 20 倍 / 两同 2 倍）</button>
+  <div class="dim tiny" style="margin-top:10px">3 颗骰：4-10 小，11-17 大，围骰通吃。</div>`);
+};
+app.chip=v=>{S.lastBet=v;save();op.casino()};
+app.dice=function(kind){
+  const bet=S.lastBet||5000;
+  if(bet>S.user.money) return toast('现金不够');
+  const d=[0,0,0].map(()=>1+Math.floor(Math.random()*6)), sum=d[0]+d[1]+d[2];
+  const all=d[0]===d[1]&&d[1]===d[2];
+  let win=0,msg='';
+  if(kind==='big'){ if(all){win=-bet;msg='围骰通吃'} else if(sum>=11){win=bet;msg='大，赢'} else {win=-bet;msg='小，输'} }
+  else if(kind==='small'){ if(all){win=-bet;msg='围骰通吃'} else if(sum<=10){win=bet;msg='小，赢'} else {win=-bet;msg='大，输'} }
+  else { win=all?bet*24:-bet; msg=all?'围骰！24 倍':'不是围骰' }
+  S.user.money+=win; save();
+  $('#modal').innerHTML=`<div class="grab"></div><button class="x" onclick="app.close()">✕</button><h2>澳门 · 主力娱乐场</h2>
+    <div class="sub">何家的场子 · 贵宾厅在二楼</div>
+    <div style="display:flex;justify-content:space-between"><span class="dim">现金 HK$ ${cmoney(S.user.money)}</span><span class="dim">本局 HK$ ${nf(bet)}</span></div>
+    <div class="dice">${d.map(x=>`<div>${'⚀⚁⚂⚃⚄⚅'[x-1]}</div>`).join('')}</div>
+    <div style="text-align:center;font-size:15px;color:${win>=0?'var(--acc)':'#a3222c'}">${sum} 点 · ${msg} ${win?('HK$ '+cmoney(win)):''}</div>
+    <div class="chips">${[1000,5000,10000,50000].map(v=>`<button class="${bet===v?'on':''}" onclick="app.chip(${v})">${cmoney(v)}</button>`).join('')}</div>
+    <div class="bets"><button onclick="app.dice('big')">大 11-17<small>1 : 1</small></button>
+    <button onclick="app.dice('small')">小 4-10<small>1 : 1</small></button>
+    <button onclick="app.dice('triple')">围骰<small>1 : 24</small></button></div>
+    <button class="block" style="margin-top:10px;text-align:center" onclick="app.slot()">🎰 老虎机</button>`;
+};
+app.slot=function(){
+  const SY=['🍒','🔔','7','💎','🍋'], bet=S.lastBet||5000;
+  if(bet>S.user.money) return toast('现金不够');
+  const r=[0,0,0].map(()=>SY[Math.floor(Math.random()*SY.length)]);
+  const same=r[0]===r[1]&&r[1]===r[2];
+  const two=r.filter(x=>x===r[0]).length===2||r.filter(x=>x===r[1]).length===2;
+  const win=same?bet*20:two?bet*2:-bet; S.user.money+=win; save();
+  toast(`🎰 ${r.join(' ')} → ${win>0?'赢':'输'} HK$ ${cmoney(Math.abs(win))}`);
+  op.casino(); render();
+};
+
+/* 商城 */
+op.shop=function(){ SHOPCAT=SHOPCAT||'全部'; const all=SHOP.concat(S.shopCustom); const cats=['全部','衣饰','首饰','车','玩物','宅邸','礼物'];
+  const list=SHOPCAT==='全部'?all:all.filter(i=>i.c===SHOPCAT);
+  app.open('AURUM · 私选仓库',`
+  <div class="sub">中环 · 只接受熟客介绍</div>
+  <div class="list"><div class="l"><div class="n" style="letter-spacing:5px">A U R U M</div><div class="s">只接受熟客介绍</div></div>
+   <div style="text-align:right;font-size:12px"><div class="dim tiny">我的现金 / 允许度</div><div>HK$ ${cmoney(S.user.money)} · ${S.him.aff}</div></div></div>
+  <div class="chips">${cats.map(c=>`<button class="${c===SHOPCAT?'on':''}" onclick="app.shopcat('${c}')">${c}</button>`).join('')}
+   <button onclick="app.addItem()">+ 自定义物品</button></div>
+  <div class="grid">${list.map(i=>`<div class="card"><div class="s">${esc(i.c)}</div><div class="t">${esc(i.n)}</div>
+    <div class="p">HK$ ${cmoney(i.p)}</div><div class="d">${esc(i.d||'')}</div>
+    <div class="d" style="display:flex;justify-content:space-between;margin-top:6px"><span>允许度</span><span>${S.him.aff} / ${i.req||0}</span></div>
+    <div class="track"><i style="width:${Math.min(100,(S.him.aff/(i.req||1))*100)}%"></i></div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button style="flex:1;padding:11px" onclick="app.buy('${esc(i.n)}','card')">刷他的卡</button>
+      <button style="flex:1;padding:11px" onclick="app.buy('${esc(i.n)}','own')">用自己的钱</button></div></div>`).join('')}</div>`);
+};
+app.shopcat=c=>{SHOPCAT=c;op.shop()};
+app.addItem=function(){
+  const n=prompt('物品名称'); if(!n) return;
+  const p=Number(prompt('价格（HK$）','100000'))||0;
+  const c=prompt('分类（衣饰/首饰/车/玩物/宅邸/礼物）','礼物')||'礼物';
+  const req=Number(prompt('需要多少允许度','10'))||0;
+  const d=prompt('描述（留空也可以）','')||'';
+  S.shopCustom.push({c,n,p,d,req}); save(); op.shop();
+};
+app.buy=function(n,how){
+  const it=SHOP.concat(S.shopCustom).find(x=>x.n===n); if(!it) return;
+  if(how==='own'){ if(S.user.money<it.p) return toast('现金不够'); S.user.money-=it.p; }
+  else{ if(S.him.aff<(it.req||0)) return toast('还差一点：允许度不足');
+        S.gifted+=it.p; if(it.c==='宅邸'){S.net=Math.max(0,S.net-it.p);S.myNet+=it.p;} }
+  S.owned.push(it.n); if(it.c==='宅邸') S.user.home=it.n;
+  save(); render(); op.shop(); toast('已购入：'+it.n);
+};
+
+/* 资产 */
+op.assets=function(){
+  const pts=[28,30,29,33,31,34,36,35,38,40,39,43];
+  const path=pts.map((v,i)=>`${i*36},${90-v*1.5}`).join(' ');
+  app.open('何瑞璋 · 资产',`
+  <div class="sub">PRIVATE WEALTH STATEMENT · 仅供本人查阅</div>
+  <div class="dim tiny">NET WORTH · 净值合计</div>
+  <div class="wbig serif" style="font-size:32px">${nf(S.net)}</div>
+  <div class="dim tiny">HKD ｜ 外币 USD / EUR / SGD ｜ 基准日 2025.11.01</div>
+  <svg viewBox="0 0 400 100" style="width:100%;height:96px;margin:10px 0">
+    <polyline fill="none" stroke="var(--acc)" stroke-width="1.4" points="${path}"/>
+    <polygon fill="var(--accbg)" points="0,100 ${path} 396,100"/>
+  </svg>
+  <div class="dim tiny" style="margin-bottom:10px">12 个月净值走势 · +38.6%</div>
+  <div class="grid">
+    <div class="card"><div class="s">I 流动资产</div>
+      ${[['现金 · 港币',4800000000],['现金 · 美元',12600000000],['汇丰 · 港币往来',42600000000],['中银香港 · 美元往来',26400000000],['短期理财 · 7 日滚动',78000000000]].map(([k,v])=>`<div class="kv"><span>${k}</span><span>${nf(v)}</span></div>`).join('')}</div>
+    <div class="card"><div class="s">II 定期存款</div>
+      ${[['汇丰 · 12 个月',320000000000],['中银 · 18 个月',295000000000],['新加坡 · 36 个月',180000000000]].map(([k,v])=>`<div class="kv"><span>${k}</span><span>${nf(v)}</span></div>`).join('')}</div>
+    <div class="card"><div class="s">III 产业 · 可公开</div>
+      ${[['赌场 · 澳门',42000000000],['夜总会 · 尖沙咀',12000000000],['会所 · 中环',16000000000],['酒庄 · 波尔多',14000000000]].map(([k,v])=>`<div class="kv"><span>${k}</span><span>${nf(v)}</span></div>`).join('')}</div>
+    <div class="card"><div class="s">你的资产</div>
+      <div class="kv"><span>现金</span><span>HK$ ${cmoney(S.user.money)}</span></div>
+      <div class="kv"><span>他转给你的</span><span>HK$ ${cmoney(S.myNet)}</span></div>
+      <div class="kv"><span>名下件数</span><span>${S.owned.length}</span></div>
+      <button style="margin-top:8px;width:100%;padding:11px" onclick="app.editNet()">改净值</button></div>
+  </div>`);
+};
+app.editNet=function(){const v=prompt('改净值（港币）',String(S.net));if(v==null)return;S.net=Number(v.replace(/[^\d]/g,''))||S.net;save();op.assets()};
+
+/* 手机 */
+op.phone=function(tab='msg'){ const P=S.phone;
+  app.open('何瑞璋的手机',`
+  <div style="display:flex;gap:14px;border-bottom:1px solid var(--ln);margin-bottom:10px">
+   ${[['msg','信息'],['calls','通话'],['notes','备忘录']].map(([k,n])=>`<button onclick="app.ptab('${k}')" style="border:none;padding:8px 0;border-bottom:1px solid ${tab===k?'var(--acc)':'transparent'};color:${tab===k?'var(--acc)':'var(--dm)'}">${n}</button>`).join('')}
+   <button style="margin-left:auto;border:none;color:var(--acc);padding:8px 0" onclick="app.prefresh('${tab}')">AI 刷新</button></div>
+  ${tab==='msg'?P.msg.map(m=>`<div class="list"><div class="l"><div class="n">${esc(m.n)}${m.t?`<span class="tag">${esc(m.t)}</span>`:''}</div><div class="s">${esc(m.c)}</div></div><span class="dim tiny">${esc(m.time||'')}</span></div>`).join(''):''}
+  ${tab==='calls'?P.calls.map(m=>`<div class="list"><div class="l"><div class="n">${esc(m.n)}</div><div class="s">${esc(m.c)}</div></div><span class="dim tiny">${esc(m.time||'')}</span></div>`).join(''):''}
+  ${tab==='notes'?P.notes.map(m=>`<div class="list"><div class="l"><div class="n">${esc(m.n)}</div></div><span class="dim tiny">${esc(m.time||'')}</span></div>`).join(''):''}
+  <div class="dim tiny" style="margin-top:10px">AI 刷新 = 一次 API 调用。没配置 API 时保持原样。</div>`);
+};
+app.ptab=k=>op.phone(k);
+app.prefresh=async function(tab){
+  try{
+    const ask=`以何瑞璋的手机为准生成 JSON：{"items":[{"n":"姓名","t":"身份","time":"HH:MM","c":"内容"}]}。${tab==='notes'?'备忘录 4 条，一句一条，冷硬的备忘口吻。':tab==='calls'?'通话记录 4 条，c 写成「已接 · 3 分 12 秒」。':'信息 6 条，含家族成员与助理，一条来自她。'}只输出 JSON。`;
+    let out=''; await callAI([{role:'system',content:'你只输出 JSON，不要解释。'},{role:'user',content:ask}],d=>out+=d);
+    const j=JSON.parse(out.replace(/```json|```/g,'').trim());
+    if(tab==='notes')S.phone.notes=j.items; else if(tab==='calls')S.phone.calls=j.items; else S.phone.msg=j.items;
+    save(); op.phone(tab);
+  }catch(e){toast('刷新失败：'+e.message)}
+};
+
+/* 存档 */
+op.saves=function(){
+  const row=(label,slot,idx)=>`<div class="list"><div class="l"><div class="n">${label}</div>
+    <div class="s">${slot?esc(slot.tag)+' · '+slot.n+' 条 · '+esc(slot.time):'空'}</div></div>
+    <div style="display:flex;gap:6px">
+      <button onclick="app.ssave(${idx})">存档</button>
+      ${slot?`<button onclick="app.sload(${idx})">读取</button>`:''}</div></div>`;
+  app.open('存档',`
+  <div class="sub">存档在浏览器本地；世界书与预设也会一起存。</div>
+  ${row('自动存档',S.auto,-1)}
+  ${S.saves.map((s,i)=>row('档位 '+(i+1),s,i)).join('')}
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button style="flex:1;padding:13px" onclick="app.export()">导出存档</button>
+    <button style="flex:1;padding:13px" onclick="app.import()">导入存档</button></div>`);
+};
+app.ssave=function(i){
+  const snap=JSON.parse(JSON.stringify(S)); snap.api.list.forEach(p=>p.key='');
+  const o={tag:S.pos.you+' · 何瑞璋在'+S.pos.him,n:S.chat.length,time:new Date().toLocaleString('zh-CN'),s:snap};
+  if(i<0)S.auto=o; else S.saves[i]=o;
+  save(); op.saves(); toast('已存档');
+};
+app.sload=function(i){
+  const o=i<0?S.auto:S.saves[i]; if(!o) return toast('空档位');
+  const api=S.api; S=Object.assign(defState(),o.s); S.api=api; save(); render(); app.close(); toast('已读取');
+};
+app.export=function(){
+  const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='he_ruizhang_'+Date.now()+'.json';a.click();
+};
+app.import=function(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=()=>{const f=inp.files[0];const r=new FileReader();
+    r.onload=()=>{try{S=Object.assign(defState(),JSON.parse(r.result));save();render();app.close();toast('已导入')}catch(e){toast('文件读不了')}};
+    r.readAsText(f)};
+  inp.click();
+};
+
+/* 世界书 / 预设（各组独立） */
+op.wb=function(tab){ WBT=tab||WBT||'ps'; const g=WBT==='wb'?S.wb:S.ps;
+  const chars=(g.items||[]).filter(i=>i.on).reduce((a,b)=>a+(b.content||'').length,0);
+  app.open(WBT==='wb'?'世界书':'预设',`
+  <div style="display:flex;gap:10px;margin-bottom:12px">
+    <button onclick="app.wbtab('wb')" style="${WBT==='wb'?'border-color:var(--acc);color:var(--acc)':''}">世界书</button>
+    <button onclick="app.wbtab('ps')" style="${WBT==='ps'?'border-color:var(--acc);color:var(--acc)':''}">预设</button></div>
+  <label class="f" style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:20px;height:20px" ${g.on?'checked':''} onchange="app.wbset('on',this.checked)"> 大开关（关闭后整组不注入）</label>
+  <label class="f" style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:20px;height:20px" ${g.saveflow?'checked':''} onchange="app.wbset('saveflow',this.checked)"> 省流模式（每回合少注入一些字）</label>
+  <div class="rowf"><div><label class="f">上限（字）· 0 = 不限</label><input type="number" value="${g.limit||0}" onchange="app.wbset('limit',Number(this.value)||0)"></div>
+   <div><label class="f">当前注入估算</label><input value="${chars} 字 ≈ ${tok((g.items||[]).filter(i=>i.on).map(i=>i.content).join(''))} token" readonly></div></div>
+  <div class="lab">条目（顺序即注入顺序）</div>
+  ${(g.items||[]).length?(g.items||[]).map((it,i)=>`<div class="list" style="align-items:flex-start">
+    <div class="l"><div class="n">${esc(it.name||'条目 '+(i+1))}${it.keys&&it.keys.length?'<span class="tag">'+esc(it.keys.join(' / '))+'</span>':''}</div>
+    <div class="s">${(it.content||'').length} 字 · ${it.on?'已启用':'已停用'}</div></div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:150px">
+      <button onclick="app.wbmv(${i},-1)">↑</button><button onclick="app.wbmv(${i},1)">↓</button>
+      <button onclick="app.wbtoggle(${i})">${it.on?'停用':'启用'}</button>
+      <button onclick="app.wbedit(${i})">改</button>
+      <button onclick="app.wbdel(${i})">删</button></div></div>`).join(''):'<div class="dim tiny">还没有条目。可手动添加，或导入酒馆 JSON。</div>'}
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <button style="flex:1;padding:12px" onclick="app.wbadd()">+ 添加条目</button>
+    <button style="flex:1;padding:12px" onclick="app.wbimport()">从酒馆 JSON 导入</button></div>
+  <div class="dim tiny" style="margin-top:10px">世界书 ${S.wb.items.length} 条 · 预设 ${S.ps.items.length} 段。支持 entries / prompts 两种酒馆结构。</div>`);
+};
+const curG=()=>WBT==='wb'?S.wb:S.ps;
+app.wbtab=k=>{WBT=k;op.wb(k)};
+app.wbset=(k,v)=>{curG()[k]=v;save();op.wb()};
+app.wbtoggle=i=>{const g=curG();g.items[i].on=!g.items[i].on;save();op.wb()};
+app.wbmv=(i,d)=>{const a=curG().items,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];a.forEach((x,k)=>x.order=k);save();op.wb()};
+app.wbedit=i=>{const it=curG().items[i];const c=prompt('内容',it.content);if(c==null)return;it.content=c;save();op.wb()};
+app.wbdel=i=>{curG().items.splice(i,1);save();op.wb()};
+app.wbadd=()=>{const n=prompt('条目名');if(!n)return;const c=prompt('内容')||'';const k=prompt('关键词（逗号分隔，可留空）')||'';
+  const g=curG(); g.items.push({name:n,content:c,keys:k?k.split(/[,，]/).map(x=>x.trim()).filter(Boolean):[],on:true,order:g.items.length});save();op.wb()};
+app.wbimport=()=>{
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.multiple=true;
+  inp.onchange=()=>{[...inp.files].forEach(f=>{const r=new FileReader();
+    r.onload=()=>{try{
+      const j=JSON.parse(r.result);
+      if(j.entries){
+        Object.values(j.entries).forEach(e=>S.wb.items.push({name:e.comment||(e.key&&e.key[0])||'条目',keys:e.key||[],content:e.content||'',on:!e.disable,order:e.order||S.wb.items.length}));
+        toast('世界书导入 '+Object.keys(j.entries).length+' 条');WBT='wb';op.wb('wb');
+      }else if(j.prompts){
+        j.prompts.forEach((p,i)=>S.ps.items.push({name:p.name||p.identifier||('段 '+(i+1)),keys:[],content:p.content||'',on:p.enabled!==false,order:i}));
+        toast('预设导入 '+j.prompts.length+' 段');WBT='ps';op.wb('ps');
+      }else toast('不是酒馆格式');
+      save();
+    }catch(e){toast('解析失败')}};r.readAsText(f)})};
+  inp.click();
+};
+
+/* 记忆 */
+op.mem=function(){ const m=S.mem, rounds=S.chat.filter(x=>x.role==='user').length;
+  app.open('记忆',`
+  <div class="rowf"><div><label class="f">每 N 轮总结一次</label><input type="number" value="${m.every}" onchange="app.memSet('every',this.value)"></div>
+  <div><label class="f">每次读最近 N 轮</label><input type="number" value="${m.read}" onchange="app.memSet('read',this.value)"></div></div>
+  <div class="dim tiny" style="margin-top:8px">1 轮 = 你一句 + 他一句 · 当前 ${rounds} 轮 · ${m.summary?('已有摘要 '+m.summary.length+' 字'):'还没有摘要'}</div>
+  <div style="display:flex;gap:8px;margin:12px 0">
+    <button style="flex:1;padding:12px" onclick="app.summarize()">立即总结</button>
+    <button style="flex:1;padding:12px" onclick="app.memClear()">清空摘要</button></div>
+  <label class="f">摘要内容（可以自己改）</label>
+  <textarea id="memBox" style="min-height:130px">${esc(m.summary)}</textarea>
+  <button style="margin-top:10px;width:100%;padding:12px" onclick="app.memSave()">保存摘要</button>
+  <label class="f">总结提示词（{{old}} = 已有摘要，{{new}} = 新增剧情）</label>
+  <textarea id="memP" style="min-height:130px">${esc(m.prompt)}</textarea>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button style="flex:1;padding:12px" onclick="app.memPrompt(true)">保存提示词</button>
+    <button style="flex:1;padding:12px" onclick="app.memPrompt(false)">恢复默认</button></div>
+  <div class="dim tiny" style="margin-top:10px">一次总结 = 一次 API 调用。没配置 API 时不会自动总结。</div>`);
+};
+app.memSet=(k,v)=>{S.mem[k]=Number(v)||0;save()};
+app.memSave=()=>{S.mem.summary=$('#memBox').value;save();toast('已保存')};
+app.memClear=()=>{S.mem.summary='';save();op.mem()};
+app.memPrompt=keep=>{S.mem.prompt=keep?$('#memP').value:DEF_PROMPT;save();op.mem()};
+app.summarize=async function(auto){
+  const m=S.mem;
+  if(!S.chat.filter(x=>x.text).length) return toast('没有对话');
+  const n=(Number(m.read)||8)*2;
+  const fresh=S.chat.filter(x=>x.text).slice(-n).map(x=>(x.role==='user'?'她：':'他：')+x.text).join('\n');
+  const p=m.prompt.replace('{{old}}',m.summary||'（无）').replace('{{new}}',fresh);
+  try{ let out=''; await callAI([{role:'user',content:p}],d=>out+=d);
+    S.mem.summary=out.trim();save(); if(auto) toast('已自动生成摘要'); else op.mem();
+  }catch(e){toast('总结失败：'+e.message)}
+};
+
+/* 设定 */
+op.cfg=function(){
+  app.open('设定 · 人设与开局',`
+  <label class="f">开局节点（会重置五值与现金）</label>
+  <div class="chips">${Object.keys(STAGES).map(k=>`<button class="${k===S.stage?'on':''}" onclick="app.stage('${k}')">${k}</button>`).join('')}</div>
+  <div class="rowf" style="margin-top:8px">
+    <div><label class="f">你的名字</label><input value="${esc(S.user.name)}" onchange="app.u('name',this.value)"></div>
+    <div><label class="f">年龄</label><input type="number" value="${S.user.age}" onchange="app.u('age',this.value)"></div></div>
+  <div class="rowf">
+    <div><label class="f">现金（HK$）</label><input type="number" value="${S.user.money}" onchange="app.u('money',this.value)"></div>
+    <div><label class="f">股票</label><input value="${esc(S.user.stock)}" onchange="app.u('stock',this.value)"></div></div>
+  <label class="f">人设（局内随时可改）</label>
+  <textarea onchange="app.u('persona',this.value)">${esc(S.user.persona)}</textarea>
+  <label class="f">你住哪</label><input value="${esc(S.user.home)}" onchange="app.u('home',this.value)">
+  <div class="rowf" style="margin-top:10px">
+    <div><label class="f">他此刻的情绪</label><input value="${esc(S.him.mood)}" onchange="app.h('mood',this.value)"></div>
+    <div><label class="f">当前时间</label><input value="${esc(S.clock)}" onchange="app.clockSet(this.value)"></div></div>
+  <div class="rowf" style="margin-top:8px">
+    ${[['aff','好感度'],['love','爱意'],['trust','信任'],['ctrl','掌控欲'],['danger','危险']].map(([k,n])=>`<div><label class="f">${n}</label><input type="number" value="${S.him[k]}" onchange="app.h('${k}',this.value)"></div>`).join('')}</div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button style="flex:1;padding:12px" onclick="app.m('api')">API 设置</button>
+    <button style="flex:1;padding:12px" onclick="app.theme()">切换色调</button></div>`);
+};
+app.u=(k,v)=>{S.user[k]=(k==='money'||k==='age')?Number(v)||0:v;save();render()};
+app.h=(k,v)=>{S.him[k]=Number(v)||0;save();render()};
+app.clockSet=v=>{S.clock=v;save();render()};
+app.stage=k=>{const st=STAGES[k];S.stage=k;S.user.money=st.money;S.user.stock=st.stock;
+  Object.assign(S.him,{aff:st.aff,love:st.love,trust:st.trust,ctrl:st.ctrl,danger:st.danger});
+  S.pos.you=st.pos;S.chat=[];save();render();app.close();toast('已切到「'+k+'」')};
+
+/* API */
+op.api=function(){ const c=S.api.list[S.api.cur];
+  app.open('API 适配',`
+  <div class="rowf"><div><label class="f">方案</label>
+    <select onchange="app.apiPick(this.value)">${S.api.list.map((p,i)=>`<option value="${i}" ${i===S.api.cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+    <div><label class="f">操作</label><button style="width:100%;padding:11px" onclick="app.apiNew()">+ 新建方案</button></div></div>
+  <div class="rowf" style="margin-top:8px">
+    <div><label class="f">服务商</label><select onchange="app.apiSet('prov',this.value)">
+      ${[['openai','OpenAI / DeepSeek / 兼容'],['anthropic','Anthropic Claude'],['gemini','Google Gemini'],['ollama','Ollama 本地']].map(([k,n])=>`<option value="${k}" ${c.prov===k?'selected':''}>${n}</option>`).join('')}</select></div>
+    <div><label class="f">模型</label><input value="${esc(c.model)}" onchange="app.apiSet('model',this.value)"></div></div>
+  <label class="f">Base URL</label><input value="${esc(c.url)}" onchange="app.apiSet('url',this.value)" placeholder="https://api.openai.com/v1 ｜ http://localhost:11434/v1">
+  <label class="f">API Key（只存在本地浏览器）</label><input type="password" value="${esc(c.key)}" onchange="app.apiSet('key',this.value)">
+  <div class="rowf" style="margin-top:8px">
+    <div><label class="f">max_tokens</label><input type="number" value="${c.max}" onchange="app.apiSet('max',this.value)"></div>
+    <div><label class="f">temperature</label><input type="number" step="0.1" value="${c.temp}" onchange="app.apiSet('temp',this.value)"></div></div>
+  <div style="display:flex;gap:8px;margin-top:14px"><button style="flex:1;padding:12px" onclick="app.apiTest()">测试连接</button>
+  <button style="flex:1;padding:12px" onclick="app.apiDel()">删除此方案</button></div>
+  <div class="dim tiny" style="margin-top:10px">浏览器直连：Ollama 需设 OLLAMA_ORIGINS=*；Anthropic 已带 dangerous-direct-browser-access。若被 CORS 拦，改用本地代理或 Ollama。</div>`);
+};
+app.apiPick=i=>{S.api.cur=Number(i);save();op.api()};
+app.apiSet=(k,v)=>{const c=S.api.list[S.api.cur];c[k]=(k==='max'||k==='temp')?Number(v):v;save()};
+app.apiNew=()=>{const n=prompt('方案名','新方案')||'方案';S.api.list.push({name:n,prov:'openai',url:'https://api.openai.com/v1',key:'',model:'gpt-4o-mini',max:900,temp:0.9});S.api.cur=S.api.list.length-1;save();op.api()};
+app.apiDel=()=>{if(S.api.list.length<2)return toast('至少留一个');S.api.list.splice(S.api.cur,1);S.api.cur=0;save();op.api()};
+app.apiTest=async()=>{try{let o='';await callAI([{role:'user',content:'只回复两个字：通了'}],d=>o+=d);toast(o?('连接成功：'+o.slice(0,16)):'返回空')}catch(e){toast(e.message)}};
+
+/* ================= 启动 ================= */
+render();
+const inp=$('#inp');
+inp.addEventListener('input',()=>{inp.style.height='44px';inp.style.height=Math.min(132,inp.scrollHeight)+'px'});
+inp.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey&&window.innerWidth>640){e.preventDefault();app.send();}
+});
+$('#mask').addEventListener('click',e=>{if(e.target.id==='mask')app.close()});
+document.addEventListener('gesturestart',e=>e.preventDefault());
+save();
+</script>
+<script>if("serviceWorker" in navigator && location.protocol.startsWith("http")){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
+</body>
+</html>
