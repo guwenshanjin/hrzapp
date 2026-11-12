@@ -52,8 +52,8 @@ jobs:
                   applicationId 'com.hrz.app'
                   minSdk 24
                   targetSdk 34
-                  versionCode 3
-                  versionName '1.2'
+                  versionCode 4
+                  versionName '1.3'
               }
               signingConfigs {
                   rel {
@@ -83,6 +83,7 @@ jobs:
                   android:label="何瑞璋"
                   android:icon="@drawable/ic_launcher"
                   android:usesCleartextTraffic="true"
+                  android:largeHeap="true"
                   android:theme="@android:style/Theme.Black.NoTitleBar">
                   <activity android:name=".MainActivity" android:exported="true"
                       android:configChanges="orientation|screenSize|keyboardHidden">
@@ -110,9 +111,13 @@ jobs:
           package com.hrz.app;
 
           import android.app.Activity;
+          import android.content.Intent;
+          import android.net.Uri;
           import android.os.Bundle;
           import android.view.KeyEvent;
           import android.webkit.JavascriptInterface;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
           import android.webkit.WebResourceRequest;
           import android.webkit.WebResourceResponse;
           import android.webkit.WebSettings;
@@ -129,6 +134,8 @@ jobs:
 
           public class MainActivity extends Activity {
               private WebView web;
+              private ValueCallback<Uri[]> fileCb;
+              private static final int REQ_FILE = 1001;
 
               @Override
               protected void onCreate(Bundle b) {
@@ -145,6 +152,8 @@ jobs:
                   s.setMediaPlaybackRequiresUserGesture(false);
                   s.setSupportZoom(false);
                   s.setTextZoom(100);
+                  s.setAllowFileAccess(true);
+                  s.setAllowContentAccess(true);
 
                   web.addJavascriptInterface(new Bridge(), "NativeFetch");
 
@@ -155,8 +164,42 @@ jobs:
                       }
                   });
 
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams params) {
+                          if (fileCb != null) fileCb.onReceiveValue(null);
+                          fileCb = cb;
+                          Intent i = null;
+                          try { i = params.createIntent(); } catch (Exception e) { i = null; }
+                          if (i == null) {
+                              i = new Intent(Intent.ACTION_GET_CONTENT);
+                              i.addCategory(Intent.CATEGORY_OPENABLE);
+                              i.setType("*/*");
+                          }
+                          try { startActivityForResult(i, REQ_FILE); }
+                          catch (Exception e) { fileCb = null; return false; }
+                          return true;
+                      }
+                  });
+
                   setContentView(web);
                   web.loadUrl("https://appassets.androidplatform.net/assets/index.html");
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent data) {
+                  if (req == REQ_FILE) {
+                      if (fileCb == null) return;
+                      Uri[] out = null;
+                      if (res == RESULT_OK && data != null) {
+                          out = WebChromeClient.FileChooserParams.parseResult(res, data);
+                          if (out == null && data.getData() != null) out = new Uri[]{ data.getData() };
+                      }
+                      fileCb.onReceiveValue(out);
+                      fileCb = null;
+                      return;
+                  }
+                  super.onActivityResult(req, res, data);
               }
 
               private void emit(final String js) {
@@ -216,8 +259,12 @@ jobs:
 
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent e) {
-                  if (keyCode == KeyEvent.KEYCODE_BACK && web != null && web.canGoBack()) {
-                      web.goBack();
+                  if (keyCode == KeyEvent.KEYCODE_BACK) {
+                      web.evaluateJavascript("(window.__backCall&&window.__backCall())?1:0", new ValueCallback<String>() {
+                          @Override public void onReceiveValue(String v) {
+                              if (v == null || v.indexOf("1") < 0) finish();
+                          }
+                      });
                       return true;
                   }
                   return super.onKeyDown(keyCode, e);
