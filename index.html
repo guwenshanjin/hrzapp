@@ -1402,5 +1402,30 @@ app.open=function(t,h){
 };
 })();
 </script>
+<style>
+#mask{animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+#modal{animation:sheet .24s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheet{from{transform:translateY(22px);opacity:.35}to{transform:translateY(0);opacity:1}}
+.msg{animation:pin .22s ease both}
+@keyframes pin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.pv{transition:background .15s ease}
+#boot{animation:fade .3s ease}
+#bnav button{transition:color .15s ease}
+</style>
+<script>
+(function(){
+if(window.__hrzUX)return; window.__hrzUX=1;
+window.__backCall=function(){
+ var m=document.getElementById("mask");
+ if(m){
+  var cls=" "+m.className+" ";
+  if(cls.indexOf(" hidden ")<0){app.close();return 1}
+ }
+ if(document.getElementById("boot"))return 1;
+ return 0;
+};
+})();
+</script>
 </body>
 </html>
